@@ -1,0 +1,17 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug vLLM Qwen Server",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/run_vllm.py",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "env": {
+        "VLLM_LOGGING_LEVEL": "DEBUG",
+        "CUDA_LAUNCH_BLOCKING": "1"
+      }
+    }
+  ]
+}
