@@ -1,21 +1,43 @@
-# Add the NVIDIA devtools repository list for your architecture
-distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
-curl -s -O https://developer.download.nvidia.com/compute/cuda/repos/$distribution/x86_64/cuda-keyring_1.1-1_all.deb
-dpkg -i cuda-keyring_1.1-1_all.deb
+#!/usr/bin/env bash
+set -euo pipefail
 
-# Add the devtools source specifically
-echo "deb https://developer.download.nvidia.com/compute/cuda/repos/$distribution/x86_64/ /" | tee /etc/pki/rpm-gpg /etc/apt/sources.list.d/nvidia-devtools.list 2>/dev/null || true
-echo "deb https://developer.download.nvidia.com/compute/cuda/repos/$distribution/x86_64/ /" | tee /etc/apt/sources.list.d/nvidia-devtools.list
+apt-get update || true
+apt-get install -y curl ca-certificates
 
-#Update package lists and install prerequisite utilities
-apt-get update && apt-get install -y wget gnupg
+# Ubuntu 24.04 -> ubuntu2404 (not ubuntu24.04)
+source /etc/os-release
+distribution="${ID}${VERSION_ID//./}"
+arch="x86_64"
 
-# (Optional) If you need the full CUDA toolkit which includes nsys and ncu:
-# Make sure to check your CUDA version first with `nvcc --version`
-apt-get install -y cuda-toolkit-$(nvcc --version | grep "Release" | awk '{print $NF}' | cut -d'.' -f1,2 | tr '.' '-')
+REPO="https://developer.download.nvidia.com/compute/cuda/repos/${distribution}/${arch}"
 
-# Alternatively, you can install just the profiling tools package if available in your repo:
-apt-get install -y nsight-systems-cli
+# Remove the invalid source added previously
+rm -f /etc/apt/sources.list.d/nvidia-devtools.list
 
+# Install NVIDIA repository keyring
+curl -fsSL \
+    "${REPO}/cuda-keyring_1.1-1_all.deb" \
+    -o /tmp/cuda-keyring.deb
 
+dpkg -i /tmp/cuda-keyring.deb
+
+apt-get update
+
+# Install Nsight tools for CUDA 12.8
+CUDA_VERSION="${CUDA_VERSION:-12-8}"
+
+apt-get install -y \
+    "cuda-nsight-systems-${CUDA_VERSION}" \
+    "cuda-nsight-compute-${CUDA_VERSION}"
+
+# Ensure profiler executables are on PATH
+export PATH="/usr/local/cuda/bin:/usr/local/cuda-12.8/bin:$PATH"
+
+echo "Nsight Systems:"
+nsys --version
+
+echo "Nsight Compute:"
+ncu --version
+
+# Install vLLM
 VLLM_USE_PRECOMPILED=1 uv pip install -e .
